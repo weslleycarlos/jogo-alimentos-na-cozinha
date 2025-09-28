@@ -42,8 +42,7 @@ class GameScene extends Phaser.Scene {
         const larguraFaixa = this.scale.width / numJogadores;
         const velocidade = 150;
         let jogadores = [];
-        let obstaculosPool = this.add.group();
-        let timerObstaculos;
+        let obstaculosPool = this.physics.add.group(); // Changed to physics group
 
         this.add.image(450, 300, 'fundo').setScrollFactor(0.5);
 
@@ -75,23 +74,26 @@ class GameScene extends Phaser.Scene {
             }
         });
 
-        timerObstaculos = this.time.addEvent({
+        // Obstacle spawning with physics group
+        this.time.addEvent({
             delay: 1500,
             callback: () => {
                 if (Math.random() < 0.3) {
                     for (let i = 0; i < numJogadores; i++) {
                         if (jogadores[i].active) {
                             let obs = obstaculosPool.get((i * larguraFaixa) + Math.random() * (larguraFaixa - 32), -32);
-                            if (!obs) {
+                            if (obs) {
                                 const spritesObs = ['faca', 'garfo', 'colher'][Math.floor(Math.random() * 3)];
-                                obs = this.physics.add.sprite(0, 0, spritesObs);
-                                obs.setVelocityY(velocidade);
+                                obs.setTexture(spritesObs); // Set texture for reused object
+                                obs.setActive(true).setVisible(true);
+                                obs.setPosition((i * larguraFaixa) + Math.random() * (larguraFaixa - 32), -32);
+                                obs.body.setVelocityY(velocidade); // Use body for physics
                                 obstaculosPool.add(obs);
                             } else {
-                                obs.setActive(true).setVisible(true);
-                                obs.x = (i * larguraFaixa) + Math.random() * (larguraFaixa - 32);
-                                obs.y = -32;
+                                const spritesObs = ['faca', 'garfo', 'colher'][Math.floor(Math.random() * 3)];
+                                obs = this.physics.add.sprite((i * larguraFaixa) + Math.random() * (larguraFaixa - 32), -32, spritesObs);
                                 obs.setVelocityY(velocidade);
+                                obstaculosPool.add(obs);
                             }
                         }
                     }
@@ -127,7 +129,7 @@ class GameScene extends Phaser.Scene {
         });
 
         this.physics.world.setBounds(2, 0, 896, 600);
-        obstaculosPool.children.entries.forEach(obs => {
+        obstaculosPool.getChildren().forEach(obs => {
             obs.body.onWorldBounds = true;
             obs.body.world.on('worldbounds', () => obs.setActive(false).setVisible(false));
         });
