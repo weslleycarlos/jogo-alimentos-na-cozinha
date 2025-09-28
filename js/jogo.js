@@ -1,41 +1,20 @@
-// Configurações globais
-const config = {
-    type: Phaser.AUTO,
-    width: 900,
-    height: 600,
-    parent: 'game-container',
-    backgroundColor: '#87CEEB', // Azul céu como fallback
-    physics: {
-        default: 'arcade',
-        arcade: { gravity: { y: 0 }, debug: false }
-    },
-    scene: [MenuScene, GameScene]
-};
-
-let game = new Phaser.Game(config);
-
-// Cena do Menu
 class MenuScene extends Phaser.Scene {
     constructor() { super({ key: 'MenuScene' }); }
     preload() {
         this.load.image('fundo-menu', 'assets/fundo-cozinha.jpg');
     }
     create() {
-        // Fundo
         this.add.image(450, 300, 'fundo-menu').setScale(1.5);
         
-        // Título com tween (animação suave)
-        let titulo = this.add.text(450, 200, 'Jogo de Comidas na Cozinha', { fontSize: '48px', fill: '#ff4500' }).setOrigin(0.5);
+        let titulo = this.add.text(450, 200, 'Jogo de Alimentos na Cozinha', { fontSize: '48px', fill: '#ff4500' }).setOrigin(0.5);
         this.tweens.add({ targets: titulo, y: '+=20', duration: 1000, yoyo: true, repeat: -1 });
         
-        // Botões para jogadores
         let btn2 = this.add.text(350, 350, '2 Jogadores', { fontSize: '32px', fill: '#32cd32', backgroundColor: '#fff' }).setInteractive().setPadding(20);
         let btn3 = this.add.text(550, 350, '3 Jogadores', { fontSize: '32px', fill: '#32cd32', backgroundColor: '#fff' }).setInteractive().setPadding(20);
         
         btn2.on('pointerdown', () => this.iniciarJogo(2));
         btn3.on('pointerdown', () => this.iniciarJogo(3));
         
-        // Hover effect
         [btn2, btn3].forEach(btn => {
             btn.on('pointerover', () => btn.setStyle({ fill: '#228b22' }));
             btn.on('pointerout', () => btn.setStyle({ fill: '#32cd32' }));
@@ -47,7 +26,6 @@ class MenuScene extends Phaser.Scene {
     }
 }
 
-// Cena do Jogo
 class GameScene extends Phaser.Scene {
     constructor() { super({ key: 'GameScene' }); }
     preload() {
@@ -62,51 +40,45 @@ class GameScene extends Phaser.Scene {
     create() {
         const numJogadores = this.registry.get('numJogadores');
         const larguraFaixa = this.scale.width / numJogadores;
-        const velocidade = 150; // Pixels por segundo (lento para criança)
+        const velocidade = 150;
         let jogadores = [];
-        let obstaculosPool = this.add.group(); // Pool para reutilizar obstáculos
-        let timerObstaculos; // Para spawn
+        let obstaculosPool = this.add.group();
+        let timerObstaculos;
 
-        // Fundo com parallax simples (move devagar)
         this.add.image(450, 300, 'fundo').setScrollFactor(0.5);
 
-        // Divisórias
         for (let i = 1; i < numJogadores; i++) {
             let linha = this.add.line(0, 0, i * larguraFaixa, 0, i * larguraFaixa, 600, 0xffffff).setOrigin(0);
             linha.setStrokeStyle(2, 0xffffff);
         }
 
-        // Inicializar jogadores (comidas)
         const spritesJog = ['maca', 'pizza', 'cupcake'];
         for (let i = 0; i < numJogadores; i++) {
             let jogador = this.physics.add.sprite((i * larguraFaixa) + (larguraFaixa / 2), 500, spritesJog[i]);
-            jogador.setCollideWorldBounds(true); // Não sai da tela
-            jogador.body.setSize(32, 32); // Hitbox
+            jogador.setCollideWorldBounds(true);
+            jogador.body.setSize(32, 32);
             jogador.larguraFaixa = larguraFaixa;
             jogador.faixaInicio = i * larguraFaixa;
             jogadores.push(jogador);
         }
 
-        // Input: Clique para mover
         this.input.on('pointerdown', (pointer) => {
             let faixa = Math.floor(pointer.x / larguraFaixa);
             if (faixa < numJogadores && jogadores[faixa].active) {
-                // Tween suave para posição do clique (dentro da faixa)
                 let targetX = Phaser.Math.Clamp(pointer.x, jogadores[faixa].faixaInicio + 16, jogadores[faixa].faixaInicio + larguraFaixa - 16);
                 this.tweens.add({
                     targets: jogadores[faixa],
                     x: targetX,
-                    duration: 200, // Suave
+                    duration: 200,
                     ease: 'Power2'
                 });
             }
         });
 
-        // Spawn de obstáculos (com pool)
         timerObstaculos = this.time.addEvent({
-            delay: 1500, // A cada 1.5s, chance de spawn
+            delay: 1500,
             callback: () => {
-                if (Math.random() < 0.3) { // 30% chance por faixa
+                if (Math.random() < 0.3) {
                     for (let i = 0; i < numJogadores; i++) {
                         if (jogadores[i].active) {
                             let obs = obstaculosPool.get((i * larguraFaixa) + Math.random() * (larguraFaixa - 32), -32);
@@ -128,11 +100,9 @@ class GameScene extends Phaser.Scene {
             loop: true
         });
 
-        // Colisões: Física cuida
         jogadores.forEach(jogador => {
             this.physics.add.overlap(jogador, obstaculosPool, () => {
-                jogador.setActive(false).setVisible(false); // "Morre"
-                // Partícula de explosão (bonitinho!)
+                jogador.setActive(false).setVisible(false);
                 this.add.particles(jogador.x, jogador.y).createEmitter({
                     speed: 100,
                     lifespan: 300,
@@ -140,34 +110,29 @@ class GameScene extends Phaser.Scene {
                     scale: { start: 1, end: 0 },
                     on: false
                 }).explode(10);
-                // Para spawn na faixa
-                timerObstaculos.paused = true; // Para todos por simplicidade; adapte se quiser
             });
         });
 
-        // Checa vencedor a cada 100ms
         this.time.addEvent({
             delay: 100,
             callback: () => {
                 let vivos = jogadores.filter(j => j.active).length;
                 if (vivos <= 1) {
                     let vencedor = jogadores.findIndex(j => j.active) + 1;
-                    this.add.text(450, 300, `Vencedor: Jogador ${vencedor}!`, { fontSize: '40px', fill: '#fff' }).setOrigin(0.5);
+                    this.add.text(450, 300, `Vencedor: Jogador ${vencedor || 'Ninguém'}!`, { fontSize: '40px', fill: '#fff' }).setOrigin(0.5);
                     this.time.delayedCall(3000, () => this.scene.start('MenuScene'));
                 }
             },
             loop: true
         });
 
-        // Atualizar obstáculos (remove se sair da tela)
-        this.physics.world.setBounds(0, 0, 900, 600);
+        this.physics.world.setBounds(2, 0, 896, 600);
         obstaculosPool.children.entries.forEach(obs => {
             obs.body.onWorldBounds = true;
             obs.body.world.on('worldbounds', () => obs.setActive(false).setVisible(false));
         });
     }
     update() {
-        // Limpa pool inativo
         this.children.getChildren().forEach(child => {
             if (child.body && !child.active && child.y > 600) {
                 child.setActive(false).setVisible(false);
@@ -175,3 +140,18 @@ class GameScene extends Phaser.Scene {
         });
     }
 }
+
+const config = {
+    type: Phaser.AUTO,
+    width: 900,
+    height: 600,
+    parent: 'game-container',
+    backgroundColor: '#87CEEB',
+    physics: {
+        default: 'arcade',
+        arcade: { gravity: { y: 0 }, debug: false }
+    },
+    scene: [MenuScene, GameScene]
+};
+
+let game = new Phaser.Game(config);
