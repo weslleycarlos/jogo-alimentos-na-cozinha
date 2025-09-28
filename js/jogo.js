@@ -4,13 +4,13 @@ class MenuScene extends Phaser.Scene {
         this.load.image('fundo-menu', 'assets/fundo-cozinha.jpg');
     }
     create() {
-        this.add.image(450, 300, 'fundo-menu').setScale(1.5);
+        this.add.image(600, 400, 'fundo-menu').setScale(2); // Ajustado para nova resolução
         
-        let titulo = this.add.text(450, 200, 'Jogo de Alimentos na Cozinha', { fontSize: '48px', fill: '#ff4500' }).setOrigin(0.5);
+        let titulo = this.add.text(600, 250, 'Jogo de Alimentos na Cozinha', { fontSize: '64px', fill: '#ff4500' }).setOrigin(0.5);
         this.tweens.add({ targets: titulo, y: '+=20', duration: 1000, yoyo: true, repeat: -1 });
         
-        let btn2 = this.add.text(350, 350, '2 Jogadores', { fontSize: '32px', fill: '#32cd32', backgroundColor: '#fff' }).setInteractive().setPadding(20);
-        let btn3 = this.add.text(550, 350, '3 Jogadores', { fontSize: '32px', fill: '#32cd32', backgroundColor: '#fff' }).setInteractive().setPadding(20);
+        let btn2 = this.add.text(450, 450, '2 Jogadores', { fontSize: '40px', fill: '#32cd32', backgroundColor: '#fff' }).setInteractive().setPadding(20);
+        let btn3 = this.add.text(750, 450, '3 Jogadores', { fontSize: '40px', fill: '#32cd32', backgroundColor: '#fff' }).setInteractive().setPadding(20);
         
         btn2.on('pointerdown', () => this.iniciarJogo(2));
         btn3.on('pointerdown', () => this.iniciarJogo(3));
@@ -40,61 +40,52 @@ class GameScene extends Phaser.Scene {
     create() {
         const numJogadores = this.registry.get('numJogadores');
         const larguraFaixa = this.scale.width / numJogadores;
-        const velocidade = 150;
+        const velocidade = 300; // Aumentado para obstáculos mais rápidos
         let jogadores = [];
-        let obstaculosPool = this.physics.add.group(); // Changed to physics group
+        let obstaculosPool = this.physics.add.group();
 
-        this.add.image(450, 300, 'fundo').setScrollFactor(0.5);
+        this.add.image(600, 400, 'fundo').setScale(2); // Ajustado para nova resolução
 
         for (let i = 1; i < numJogadores; i++) {
-            let linha = this.add.line(0, 0, i * larguraFaixa, 0, i * larguraFaixa, 600, 0xffffff).setOrigin(0);
+            let linha = this.add.line(0, 0, i * larguraFaixa, 0, i * larguraFaixa, 800, 0xffffff).setOrigin(0);
             linha.setStrokeStyle(2, 0xffffff);
         }
 
         const spritesJog = ['maca', 'pizza', 'cupcake'];
         for (let i = 0; i < numJogadores; i++) {
-            let jogador = this.physics.add.sprite((i * larguraFaixa) + (larguraFaixa / 2), 500, spritesJog[i]);
+            let jogador = this.physics.add.sprite((i * larguraFaixa) + (larguraFaixa / 2), 700, spritesJog[i]);
             jogador.setCollideWorldBounds(true);
             jogador.body.setSize(32, 32);
+            jogador.setDisplaySize(32, 32); // Padroniza tamanho do sprite
             jogador.larguraFaixa = larguraFaixa;
             jogador.faixaInicio = i * larguraFaixa;
             jogadores.push(jogador);
         }
 
-        this.input.on('pointerdown', (pointer) => {
-            let faixa = Math.floor(pointer.x / larguraFaixa);
-            if (faixa < numJogadores && jogadores[faixa].active) {
-                let targetX = Phaser.Math.Clamp(pointer.x, jogadores[faixa].faixaInicio + 16, jogadores[faixa].faixaInicio + larguraFaixa - 16);
-                this.tweens.add({
-                    targets: jogadores[faixa],
-                    x: targetX,
-                    duration: 200,
-                    ease: 'Power2'
-                });
-            }
-        });
+        // Controles via teclado
+        this.cursors = {
+            player1: { left: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A), right: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D) },
+            player2: { left: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.K), right: this.input.keyboard.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L) },
+            player3: { left: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT), right: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT) }
+        };
 
-        // Obstacle spawning with physics group
         this.time.addEvent({
-            delay: 1500,
+            delay: 1000, // Reduzido para mais obstáculos
             callback: () => {
-                if (Math.random() < 0.3) {
+                if (Math.random() < 0.4) { // Aumentado para mais frequência
                     for (let i = 0; i < numJogadores; i++) {
                         if (jogadores[i].active) {
                             let obs = obstaculosPool.get((i * larguraFaixa) + Math.random() * (larguraFaixa - 32), -32);
-                            if (obs) {
-                                const spritesObs = ['faca', 'garfo', 'colher'][Math.floor(Math.random() * 3)];
-                                obs.setTexture(spritesObs); // Set texture for reused object
-                                obs.setActive(true).setVisible(true);
-                                obs.setPosition((i * larguraFaixa) + Math.random() * (larguraFaixa - 32), -32);
-                                obs.body.setVelocityY(velocidade); // Use body for physics
-                                obstaculosPool.add(obs);
-                            } else {
-                                const spritesObs = ['faca', 'garfo', 'colher'][Math.floor(Math.random() * 3)];
+                            const spritesObs = ['faca', 'garfo', 'colher'][Math.floor(Math.random() * 3)];
+                            if (!obs) {
                                 obs = this.physics.add.sprite((i * larguraFaixa) + Math.random() * (larguraFaixa - 32), -32, spritesObs);
-                                obs.setVelocityY(velocidade);
                                 obstaculosPool.add(obs);
                             }
+                            obs.setTexture(spritesObs);
+                            obs.setActive(true).setVisible(true);
+                            obs.setPosition((i * larguraFaixa) + Math.random() * (larguraFaixa - 32), -32);
+                            obs.setDisplaySize(32, 32); // Padroniza tamanho do obstáculo
+                            obs.body.setVelocityY(velocidade);
                         }
                     }
                 }
@@ -121,22 +112,48 @@ class GameScene extends Phaser.Scene {
                 let vivos = jogadores.filter(j => j.active).length;
                 if (vivos <= 1) {
                     let vencedor = jogadores.findIndex(j => j.active) + 1;
-                    this.add.text(450, 300, `Vencedor: Jogador ${vencedor || 'Ninguém'}!`, { fontSize: '40px', fill: '#fff' }).setOrigin(0.5);
+                    this.add.text(600, 400, `Vencedor: Jogador ${vencedor || 'Ninguém'}!`, { fontSize: '48px', fill: '#fff' }).setOrigin(0.5);
                     this.time.delayedCall(3000, () => this.scene.start('MenuScene'));
                 }
             },
             loop: true
         });
 
-        this.physics.world.setBounds(2, 0, 896, 600);
+        this.physics.world.setBounds(2, 0, 1196, 800);
         obstaculosPool.getChildren().forEach(obs => {
             obs.body.onWorldBounds = true;
             obs.body.world.on('worldbounds', () => obs.setActive(false).setVisible(false));
         });
+
+        this.jogadores = jogadores; // Armazena para uso no update
     }
     update() {
+        // Controles via teclado
+        const velocidadeMovimento = 5; // Pixels por frame
+        if (this.jogadores[0].active) {
+            if (this.cursors.player1.left.isDown) {
+                this.jogadores[0].x = Math.max(this.jogadores[0].faixaInicio + 16, this.jogadores[0].x - velocidadeMovimento);
+            } else if (this.cursors.player1.right.isDown) {
+                this.jogadores[0].x = Math.min(this.jogadores[0].faixaInicio + this.jogadores[0].larguraFaixa - 16, this.jogadores[0].x + velocidadeMovimento);
+            }
+        }
+        if (this.jogadores.length > 1 && this.jogadores[1].active) {
+            if (this.cursors.player2.left.isDown) {
+                this.jogadores[1].x = Math.max(this.jogadores[1].faixaInicio + 16, this.jogadores[1].x - velocidadeMovimento);
+            } else if (this.cursors.player2.right.isDown) {
+                this.jogadores[1].x = Math.min(this.jogadores[1].faixaInicio + this.jogadores[1].larguraFaixa - 16, this.jogadores[1].x + velocidadeMovimento);
+            }
+        }
+        if (this.jogadores.length > 2 && this.jogadores[2].active) {
+            if (this.cursors.player3.left.isDown) {
+                this.jogadores[2].x = Math.max(this.jogadores[2].faixaInicio + 16, this.jogadores[2].x - velocidadeMovimento);
+            } else if (this.cursors.player3.right.isDown) {
+                this.jogadores[2].x = Math.min(this.jogadores[2].faixaInicio + this.jogadores[2].larguraFaixa - 16, this.jogadores[2].x + velocidadeMovimento);
+            }
+        }
+
         this.children.getChildren().forEach(child => {
-            if (child.body && !child.active && child.y > 600) {
+            if (child.body && !child.active && child.y > 800) {
                 child.setActive(false).setVisible(false);
             }
         });
@@ -145,8 +162,8 @@ class GameScene extends Phaser.Scene {
 
 const config = {
     type: Phaser.AUTO,
-    width: 900,
-    height: 600,
+    width: 1200, // Aumentado
+    height: 800, // Aumentado
     parent: 'game-container',
     backgroundColor: '#87CEEB',
     physics: {
